@@ -57,10 +57,18 @@ struct header
 	enum http_method method;
 	char *address;
 	char *version;
+	struct list *headers;
 	
 };
+#define HEADER_INIT { \
+	.method = METHOD_UNKNOWN, \
+	.address = NULL, \
+	.version = NULL, \
+	.headers = NULL \
+}
 int parse_header(char *buf, struct header *header)
 {
+#if 0
 	char *method_start = NULL;
 	char *address_start = NULL;
 	char *version_start = NULL;
@@ -93,7 +101,40 @@ int parse_header(char *buf, struct header *header)
 		;
 	*(buf - 1) = '\0';
 	header->version = strdup(version_start);
+#endif	
+
+	char *method;
+	char *address;
+	char *version;
+	method = strtok(buf, " ");
+	if (strcmp(method,"GET") == 0)
+		header->method = METHOD_GET; 
+	else if (strcmp(method, "POST") == 0)
+		header->method = METHOD_POST;
+	else
+		header->method = METHOD_UNKNOWN;
+	
+	address = strtok(NULL, " ");
+	if ((header->address = strdup(address)) == NULL)
+		handle_error("strdup");
+	version = strtok(NULL, " \r\n");
+	if ((header->version = strdup(version)) == NULL)
+		handle_error("strdup");
+	for(;;)
+	{
+		char *name;
+		char *value;
+		name = strtok(NULL, ": \r\n");
+		value = strtok(NULL, "\r\n");
+		if (value && (*value == ' '))
+			value++;
+		//printf("name '%s', value '%s'\n", name, value);
+		if ((name == NULL) || (value == NULL))
+			break;
+		header->headers = list_add_end( header->headers, name, value);
+	}
 	return 0;
+		
 }
 int main(int argc, char *argv[])
 {
@@ -135,7 +176,8 @@ int main(int argc, char *argv[])
 			handle_error("read");
 		if (r > 0) 
 		{ 
-			struct header header1 = { .address = NULL, .version = NULL };
+			struct header header1 = HEADER_INIT;
+			struct list *i;
 			parse_header(buf, &header1);
 #if 0
 			{
@@ -165,6 +207,8 @@ int main(int argc, char *argv[])
 			printf("\n");
 #endif
 			printf("metod %d, address '%s', version '%s' \n", header1.method, header1.address, header1.version);
+			for (i = header1.headers; i != NULL; i = i->next)
+				printf("name '%s' , value '%s' \n", i->name, i->value);
 			if(header1.address) {
 				free(header1.address);
 				header1.address = NULL;
