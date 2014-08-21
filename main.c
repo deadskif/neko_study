@@ -55,12 +55,44 @@ void list_free (struct list * ptr)
 struct header 
 {
 	enum http_method method;
-	char * address;
-	char * version;
+	char *address;
+	char *version;
 	
 };
-int parse_header(char * header_str, struct header * header)
+int parse_header(char *buf, struct header *header)
 {
+	char *method_start = NULL;
+	char *address_start = NULL;
+	char *version_start = NULL;
+	
+	while (*buf++ == ' ')
+		;
+	method_start = buf - 1;
+	while (*buf++ != ' ')
+		;
+	*(buf - 1) = '\0';
+	printf("start '%s' \n", method_start);
+	if (strcmp(method_start,"GET") == 0)
+		header->method = METHOD_GET; 
+	else if (strcmp(method_start, "POST") == 0)
+		header->method = METHOD_POST;
+	else
+		header->method = METHOD_UNKNOWN;
+	
+	while ( *buf++ == ' ')
+		;
+	address_start = buf - 1;
+	while (*buf++ != ' ')
+		;
+	*(buf - 1) = '\0';
+	header->address = strdup(address_start);
+	while (*buf++ == ' ')
+		;
+	version_start = buf - 1;
+	while (*buf++ != '\n')
+		;
+	*(buf - 1) = '\0';
+	header->version = strdup(version_start);
 	return 0;
 }
 int main(int argc, char *argv[])
@@ -104,46 +136,7 @@ int main(int argc, char *argv[])
 		if (r > 0) 
 		{ 
 			struct header header1 = { .address = NULL, .version = NULL };
-			int i;
-			int method_start = 0;
-			int method_end = 0;
-			int address_start = 0;
-			int address_end = 0;
-			int version_start = 0;
-			int version_end = 0;
-			for (i = 0; buf[i] == ' '; i++)
-				;
-			method_start = i;
-			for (; buf[i] != ' '; i++)
-				;
-			method_end = i;
-			printf("start%d end%d\n", method_start, method_end);
-			if (strncmp(buf + method_start,"GET", method_end - method_start) == 0)
-				header1.method = METHOD_GET; 
-			else if (strncmp(buf + method_start, "POST", method_end - method_start) == 0)
-				header1.method = METHOD_POST;
-			else
-				header1.method = METHOD_UNKNOWN;
-			
-			for (; buf[i] == ' '; i++)
-				;
-			address_start = i;
-			for (; buf[i] != ' '; i++)
-				;
-			address_end = i;
-			header1.address = (char *)malloc(address_end - address_start + 1);
-			header1.address[address_end - address_start] = '\0';
-			strncpy(header1.address, buf + address_start, address_end - address_start);
-			
-			for (; buf[i] == ' '; i++)
-				;
-			version_start = i;
-			for (; buf[i] != '\n'; i++)
-				;
-			version_end = i;
-			header1.version = (char *)malloc(version_end - version_start + 1);
-			header1.version[version_end - version_start] = '\0';
-			strncpy(header1.version, buf + version_start, version_end - version_start);
+			parse_header(buf, &header1);
 #if 0
 			{
 				printf("header1.version = %p, header1.address = %p\n", header1.version, header1.address);
